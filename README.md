@@ -1,4 +1,4 @@
-# pase
+# paseVGA
 An emulation of the ZXSpectrum computer on an ESP32 and VGA Screen
 
 VGA Driver is from ESP32Lib by BitLuni
