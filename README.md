@@ -1,2 +1,2 @@
-# paseVGA
-Petes Awful Spectrum Emulator with VGA display output
+# pase
+An emulation of the ZXSpectrum computer on an ESP32 and ILI9341 TFT Screen
