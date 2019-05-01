@@ -28,7 +28,7 @@ int start_ss_nmi=0;
 int break_nmi=0;
 
 
-static byte specrom[16384] =
+const PROGMEM byte specrom[16384] =
 {
     0xF3, 0xAF, 0x11, 0xFF, 0xFF, 0xC3, 0xCB, 0x11, 0x2A, 0x5D, 0x5C, 0x22, 0x5F, 0x5C, 0x18, 0x43, 
     0xC3, 0xF2, 0x15, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x2A, 0x5D, 0x5C, 0x7E, 0xCD, 0x7D, 0x00, 0xD0, 
@@ -1118,7 +1118,7 @@ byte Z80_RDMEM(uint16_t A)
 {
     if (A < 0x4000)
     {
-        return specrom[A];
+        return pgm_read_byte_near(specrom+A);
     }
     return bank1[A - 0x4000];
 }
@@ -1168,6 +1168,13 @@ void Z80_Patch (Z80_Regs *Regs)   /* Called when ED FE occurs. Can be used */
 
 int Z80_Interrupt(void)
 {  
+
+//      if(get_IM()==1)
+//        return(0xff);//IM1 interrupt device  FF - rst 38
+//      else
+//        return(Z80_IGNORE_INT);  
+
+
 //   return(Z80_IGNORE_INT );
 //   return(0xff);
 //return(0xff);
@@ -1179,13 +1186,19 @@ int Z80_Interrupt(void)
     start_ss_nmi=0;
     return(Z80_NMI_INT);
   } 
-  else if (get_IM()==1 && start_im1_irq==1 || (break_nmi==1))
+  else if (start_im1_irq==1 ) //get_IM()==1 && || (break_nmi==1)
   {
       start_im1_irq=0;
-      return(0xff);//IM1 interrupt device  FF - rst 38
+      if(get_IM()==1)
+        return(0xff);//IM1 interrupt device  FF - rst 38
+      else
+        return(0);      
   }
   else
     return(Z80_IGNORE_INT );
+
+
+ 
 }
 
 

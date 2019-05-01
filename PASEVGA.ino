@@ -22,6 +22,10 @@
 // SWITCHES
 //
 #define SD_ENABLED
+
+#define USE_FRAMESYNC
+
+
 //#define DEBUG
 bool run_debug = false;
 
@@ -63,6 +67,7 @@ byte Z80_RDMEM(uint16_t A);
 void Z80_WRMEM(uint16_t A,byte V);
 extern byte bank_latch;
 extern int start_im1_irq;
+extern int start_ss_nmi;
 
 File myFile;
 
@@ -142,7 +147,10 @@ xMutex = xSemaphoreCreateMutex();
                       0,          /* Priority of the task */
                       NULL,       /* Task handle. */
                       0);  /* Core where the task should run */
-  load_speccy();
+
+
+//  load_speccy();  //doesnt work for anything but manic miner!
+
 
 
 
@@ -158,11 +166,18 @@ void videoTask( void * parameter )
 {
    unsigned int ff,i,byte_offset;
    unsigned char color_attrib,pixel_map,zx_fore_color,zx_back_color;
+   unsigned int flashcount = 0;
    unsigned int zx_vidcalc;
    while(1)
    {
-        xSemaphoreTake( xMutex, portMAX_DELAY );
-  digitalWrite(DEBUG_PIN,HIGH);
+#ifdef USE_FRAMESYNC
+         xSemaphoreTake( xMutex, portMAX_DELAY );
+     // portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
+      // taskENTER_CRITICAL(&myMutex);
+      // vTaskDelay(1) ;
+#endif 
+
+        digitalWrite(DEBUG_PIN,HIGH);
         for(unsigned int lin = 0;lin < 192;lin++)
         {
           for(ff=0;ff<32;ff++)  //foreach byte in line
@@ -175,7 +190,16 @@ void videoTask( void * parameter )
             pixel_map=bank1[byte_offset];
             zx_fore_color=color_attrib & 0x07;
             zx_back_color=(color_attrib & 0x38)>>3;
-    
+            if(flashcount > 12)
+            {
+                  if((color_attrib & 0x80) == 0x80)
+                  {
+                      unsigned char temp = zx_fore_color;
+                      zx_fore_color = zx_back_color; 
+                      zx_back_color = temp; 
+                  }
+            }
+            
             for(i=0;i<8;i++)  //foreach pixel within a byte
             {
                 zx_vidcalc=ff*8+i;
@@ -189,9 +213,14 @@ void videoTask( void * parameter )
           }
         } 
  digitalWrite(DEBUG_PIN,LOW);
-        xSemaphoreGive( xMutex ); 
+#ifdef USE_FRAMESYNC
+         xSemaphoreGive( xMutex ); 
         vTaskDelay(1) ;
-     }
+#endif   
+        flashcount++; 
+        if(flashcount > 24)
+            flashcount = 0;
+    }
 }
       
 // SPECTRUM SCREEN DISPLAY
@@ -237,19 +266,43 @@ unsigned int zxcolor(byte c)
 // LOOP core 1 *************************************
 // LOOP core 1 *************************************
 // LOOP core 1 *************************************
+int debugloop = 0;
+extern byte get_IM();
+unsigned long curtime = millis();
 
 void loop() 
 {
   while (1) 
   { 
         do_keyboard();
+#ifdef USE_FRAMESYNC
         xSemaphoreTake( xMutex, portMAX_DELAY );
-  digitalWrite(DEBUG_PIN2,HIGH);
-             Z80_Execute();
+#endif
+curtime = millis();
+   digitalWrite(DEBUG_PIN2,HIGH);
+       
+     start_im1_irq=1;    // keyboard scan is run in IM1 interrupt
+     Z80_Execute();
+     start_im1_irq=1;    // keyboard scan is run in IM1 interrupt
+     Z80_Execute();
+
    digitalWrite(DEBUG_PIN2,LOW);
+
+//unsigned int timetaken = millis() - curtime;
+//unsigned int delayreq =(20 - timetaken) / portTICK_PERIOD_MS;
+//Serial.print("z80: ");
+//Serial.print(timetaken);
+//Serial.print("vtdel: ");
+//Serial.println(delayreq);
+//if(delayreq > 100)delayreq = 1;
+#ifdef USE_FRAMESYNC
         xSemaphoreGive( xMutex );
-        start_im1_irq=1;    // keyboard scan is run in IM1 interrupt
+#endif
         vTaskDelay(1) ;  //important to avoid task watchdog timeouts - change this to slow down emu
+//        start_im1_irq=1;    // keyboard scan is run in IM1 interrupt
+//             Z80_Execute();
+
+  
   } 
 }
 
@@ -305,6 +358,13 @@ void do_keyboard()
     bitWrite(z80ports_in[7], 2, keymap[0x3a]);
     bitWrite(z80ports_in[7], 3, keymap[0x31]);
     bitWrite(z80ports_in[7], 4, keymap[0x32]);
+
+
+    if(keymap[0x05] == 0)   // F1  key  
+    {
+      keymap[0x05] = 1;
+      load_speccy();
+    }
 }
 
 
