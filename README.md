@@ -7,14 +7,15 @@ https://github.com/bitluni/ESP32Lib
 
 Z80 core is by Marcel de Kogel
 
-Will load Manic Miner SNA snapshot from SDCard
+Will load SNA snapshots from SDCard
 
-Comment out the 'load_speccy' line in Setup to boot normally
 
 Bugs: 
 
-For some reason the SNA snapshot will not run properly using the RETN from the pushed PC on the stack, 
-the code in 'tapes' has a hardcoded jump to the manic miner startup.
+Fixed problem with SNA not loading, it was due to swapped registers in the loading
 
-At present none of the other SNAs I have tried will run properly, I think this is possibly an interrupt
-related problem.
+A much better extension of this code is available in the project from Ramon Martinez:
+
+https://github.com/rampa069/ZX-ESPectrum
+
+
